@@ -219,6 +219,8 @@ public class BottomSheetBehavior<V extends View> extends CoordinatorLayout.Behav
 
   int expandedOffset;
 
+  int effectiveExpandedOffset;
+
   int fitToContentsOffset;
 
   int halfExpandedOffset;
@@ -388,6 +390,7 @@ public class BottomSheetBehavior<V extends View> extends CoordinatorLayout.Behav
     fitToContentsOffset = Math.max(0, parentHeight - child.getHeight());
     calculateHalfExpandedOffset();
     calculateCollapsedOffset();
+    calculateEffectiveExpandedOffset();
 
     if (state == STATE_EXPANDED) {
       ViewCompat.offsetTopAndBottom(child, getExpandedOffset());
@@ -595,7 +598,7 @@ public class BottomSheetBehavior<V extends View> extends CoordinatorLayout.Behav
       } else {
         if (currentTop < halfExpandedOffset) {
           if (currentTop < Math.abs(currentTop - collapsedOffset)) {
-            top = expandedOffset;
+            top = effectiveExpandedOffset;
             targetState = STATE_EXPANDED;
           } else {
             top = halfExpandedOffset;
@@ -795,6 +798,7 @@ public class BottomSheetBehavior<V extends View> extends CoordinatorLayout.Behav
       throw new IllegalArgumentException("offset must be greater than or equal to 0");
     }
     this.expandedOffset = offset;
+    calculateEffectiveExpandedOffset();
   }
 
   /**
@@ -1036,13 +1040,27 @@ public class BottomSheetBehavior<V extends View> extends CoordinatorLayout.Behav
     return peekHeight;
   }
 
+  private int getTopMargin() {
+    if (viewRef != null) {
+      View view = viewRef.get();
+      if (view != null && view.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+        return ((ViewGroup.MarginLayoutParams) view.getLayoutParams()).topMargin;
+      }
+    }
+    return 0;
+  }
+
+  private void calculateEffectiveExpandedOffset() {
+    effectiveExpandedOffset = expandedOffset + getTopMargin();
+  }
+
   private void calculateCollapsedOffset() {
     int peek = calculatePeekHeight();
 
     if (fitToContents) {
       collapsedOffset = Math.max(parentHeight - peek, fitToContentsOffset);
     } else {
-      collapsedOffset = parentHeight - peek;
+      collapsedOffset = parentHeight - peek - getTopMargin();
     }
   }
 
@@ -1266,7 +1284,7 @@ public class BottomSheetBehavior<V extends View> extends CoordinatorLayout.Behav
                 top = halfExpandedOffset;
                 targetState = STATE_HALF_EXPANDED;
               } else {
-                top = expandedOffset;
+                top = effectiveExpandedOffset;
                 targetState = STATE_EXPANDED;
               }
             }
@@ -1280,9 +1298,9 @@ public class BottomSheetBehavior<V extends View> extends CoordinatorLayout.Behav
             } else if (fitToContents) {
               top = fitToContentsOffset;
               targetState = STATE_EXPANDED;
-            } else if (Math.abs(releasedChild.getTop() - expandedOffset)
+            } else if (Math.abs(releasedChild.getTop() - effectiveExpandedOffset)
                 < Math.abs(releasedChild.getTop() - halfExpandedOffset)) {
-              top = expandedOffset;
+              top = effectiveExpandedOffset;
               targetState = STATE_EXPANDED;
             } else {
               top = halfExpandedOffset;
@@ -1304,7 +1322,7 @@ public class BottomSheetBehavior<V extends View> extends CoordinatorLayout.Behav
             } else {
               if (currentTop < halfExpandedOffset) {
                 if (currentTop < Math.abs(currentTop - collapsedOffset)) {
-                  top = expandedOffset;
+                  top = effectiveExpandedOffset;
                   targetState = STATE_EXPANDED;
                 } else {
                   top = halfExpandedOffset;
